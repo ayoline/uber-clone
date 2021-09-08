@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'telas/Home.dart';
 
 void main() async {
-  await Firebase.initializeApp();
+  //await Firebase.initializeApp();
   WidgetsFlutterBinding.ensureInitialized();
 
   runApp(MaterialApp(
