@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:uber_clone/model/Usuario.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Cadastro extends StatefulWidget {
   const Cadastro({Key? key}) : super(key: key);
@@ -11,7 +14,8 @@ class _CadastroState extends State<Cadastro> {
   TextEditingController _controllerEmail = TextEditingController();
   TextEditingController _controllerSenha = TextEditingController();
   TextEditingController _controllerNome = TextEditingController();
-  bool _tipoUsuarioPassageiro = false;
+  String _mensagemErro = "";
+  bool _tipoUsuario = false;
 
   @override
   Widget build(BuildContext context) {
@@ -76,10 +80,10 @@ class _CadastroState extends State<Cadastro> {
                     children: [
                       Text("Passageiro"),
                       Switch(
-                        value: _tipoUsuarioPassageiro,
+                        value: _tipoUsuario,
                         onChanged: (bool valor) {
                           setState(() {
-                            _tipoUsuarioPassageiro = valor;
+                            _tipoUsuario = valor;
                           });
                         },
                       ),
@@ -93,7 +97,9 @@ class _CadastroState extends State<Cadastro> {
                       style: ElevatedButton.styleFrom(
                         primary: Color(0xff1ebbd8),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        _validarCampos();
+                      },
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
                         child: Text(
@@ -109,7 +115,7 @@ class _CadastroState extends State<Cadastro> {
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
                     child: Text(
-                      "Erro",
+                      _mensagemErro,
                       style: TextStyle(
                         color: Colors.red,
                         fontSize: 20,
@@ -123,5 +129,75 @@ class _CadastroState extends State<Cadastro> {
         ),
       ),
     );
+  }
+
+  _cadastrarUsuario(Usuario usuario) {
+    FirebaseAuth auth = FirebaseAuth.instance;
+
+    auth
+        .createUserWithEmailAndPassword(
+      email: usuario.email,
+      password: usuario.senha,
+    )
+        .then((firebaseUser) {
+      // salvar dados do usuario
+      FirebaseFirestore db = FirebaseFirestore.instance;
+      db
+          .collection("uberUsers")
+          .doc(auth.currentUser!.uid)
+          .set(usuario.toMap());
+
+      // redireciona para o painel, de acordo com o tipoUsuario
+      switch (usuario.tipoUsuario) {
+        case "motorista":
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/painel-motorista",
+            (_) => false,
+          );
+          break;
+        case "passageiro":
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/painel-passageiro",
+            (_) => false,
+          );
+          break;
+      }
+    });
+  }
+
+  _validarCampos() {
+    // Recuperar dados dos campos
+    String nome = _controllerNome.text;
+    String email = _controllerEmail.text;
+    String senha = _controllerSenha.text;
+
+    // Validar campos
+    if (nome.isNotEmpty) {
+      if (email.contains("@")) {
+        if (senha.length >= 6) {
+          Usuario usuario = Usuario();
+          usuario.nome = nome;
+          usuario.email = email;
+          usuario.senha = senha;
+          usuario.tipoUsuario = usuario.verificaTipoUsuario(_tipoUsuario);
+
+          _cadastrarUsuario(usuario);
+        } else {
+          setState(() {
+            _mensagemErro = "Preencha a senha com pelos menos 6 caracteres";
+          });
+        }
+      } else {
+        setState(() {
+          _mensagemErro = "Preencha com um email válido";
+        });
+      }
+    } else {
+      setState(() {
+        _mensagemErro = "Preencha o nome";
+      });
+    }
   }
 }

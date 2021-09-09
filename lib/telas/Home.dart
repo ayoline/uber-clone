@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:uber_clone/telas/Cadastro.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -11,6 +10,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   TextEditingController _controllerEmail = TextEditingController();
   TextEditingController _controllerSenha = TextEditingController();
+  String _mensagemErro = "";
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +89,9 @@ class _HomeState extends State<Home> {
                 Center(
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.push(
+                      Navigator.pushNamed(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => Cadastro(),
-                        ),
+                        "/cadastro",
                       );
                     },
                     child: Text(
@@ -108,7 +106,7 @@ class _HomeState extends State<Home> {
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
                     child: Text(
-                      "Erro",
+                      _mensagemErro,
                       style: TextStyle(
                         color: Colors.red,
                         fontSize: 20,
