@@ -15,6 +15,10 @@ class Rotas {
         return MaterialPageRoute(
           builder: (_) => Home(),
         );
+      case "/home":
+        return MaterialPageRoute(
+          builder: (_) => Home(),
+        );
       case "/cadastro":
         return MaterialPageRoute(
           builder: (_) => Cadastro(),

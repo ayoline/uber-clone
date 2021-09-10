@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:uber_clone/model/Usuario.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -71,20 +73,23 @@ class _HomeState extends State<Home> {
                 Padding(
                   padding: EdgeInsets.only(top: 16, bottom: 10),
                   child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        primary: Color(0xff1ebbd8),
-                      ),
-                      onPressed: () {},
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                        child: Text(
-                          "Entrar",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                          ),
+                    style: ElevatedButton.styleFrom(
+                      primary: Color(0xff1ebbd8),
+                    ),
+                    onPressed: () {
+                      _validarCampos();
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                      child: Text(
+                        "Entrar",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                 ),
                 Center(
                   child: GestureDetector(
@@ -120,5 +125,47 @@ class _HomeState extends State<Home> {
         ),
       ),
     );
+  }
+
+  _logarUsuario(Usuario usuario) {
+    FirebaseAuth auth = FirebaseAuth.instance;
+    auth
+        .signInWithEmailAndPassword(
+      email: usuario.email,
+      password: usuario.senha,
+    )
+        .then((firebaseUser) {
+      Navigator.pushReplacementNamed(context, "/painel-passageiro");
+    }).catchError((error) {
+      setState(() {
+        _mensagemErro =
+            "Erro ao autenticar usuário. Confira usuario e senha e tente novamente.";
+      });
+    });
+  }
+
+  _validarCampos() {
+// Recuperar dados dos campos
+    String email = _controllerEmail.text;
+    String senha = _controllerSenha.text;
+
+    // Validar campos
+    if (email.contains("@")) {
+      if (senha.length >= 6) {
+        Usuario usuario = Usuario();
+        usuario.email = email;
+        usuario.senha = senha;
+
+        _logarUsuario(usuario);
+      } else {
+        setState(() {
+          _mensagemErro = "Preencha a senha com pelos menos 6 caracteres";
+        });
+      }
+    } else {
+      setState(() {
+        _mensagemErro = "Preencha com um email válido";
+      });
+    }
   }
 }
