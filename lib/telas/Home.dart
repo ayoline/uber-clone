@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:uber_clone/model/Usuario.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,6 +14,13 @@ class _HomeState extends State<Home> {
   TextEditingController _controllerEmail = TextEditingController();
   TextEditingController _controllerSenha = TextEditingController();
   String _mensagemErro = "";
+  bool _carregando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificaUsuarioLogado();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +115,13 @@ class _HomeState extends State<Home> {
                     ),
                   ),
                 ),
+                _carregando
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          backgroundColor: Colors.white,
+                        ),
+                      )
+                    : Container(),
                 Padding(
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
@@ -127,7 +142,44 @@ class _HomeState extends State<Home> {
     );
   }
 
+  _verificaUsuarioLogado() async {
+    FirebaseAuth auth = FirebaseAuth.instance;
+
+    String usuarioLogado = auth.currentUser!.uid.toString();
+
+    if (usuarioLogado != "") {
+      _redirecionaPainelPorTipoUsuario(usuarioLogado);
+    }
+  }
+
+  _redirecionaPainelPorTipoUsuario(String idUsuario) async {
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    DocumentSnapshot snapshot =
+        await db.collection("uberUsers").doc(idUsuario).get();
+
+    Map<String, dynamic> dados = snapshot.data() as Map<String, dynamic>;
+    String tipoUsuario = dados["tipoUsuario"];
+
+    setState(() {
+      _carregando = false;
+    });
+
+    switch (tipoUsuario) {
+      case "motorista":
+        Navigator.pushReplacementNamed(context, "/painel-motorista");
+        break;
+      case "passageiro":
+        Navigator.pushReplacementNamed(context, "/painel-passageiro");
+        break;
+    }
+  }
+
   _logarUsuario(Usuario usuario) {
+    setState(() {
+      _carregando = true;
+    });
+
     FirebaseAuth auth = FirebaseAuth.instance;
     auth
         .signInWithEmailAndPassword(
@@ -135,7 +187,7 @@ class _HomeState extends State<Home> {
       password: usuario.senha,
     )
         .then((firebaseUser) {
-      Navigator.pushReplacementNamed(context, "/painel-passageiro");
+      _redirecionaPainelPorTipoUsuario(auth.currentUser!.uid.toString());
     }).catchError((error) {
       setState(() {
         _mensagemErro =
