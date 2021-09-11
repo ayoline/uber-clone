@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uber_clone/Rotas.dart';
 
 class PainelPassageiro extends StatefulWidget {
@@ -11,6 +15,15 @@ class PainelPassageiro extends StatefulWidget {
 
 class _PainelPassageiroState extends State<PainelPassageiro>
     with SingleTickerProviderStateMixin {
+  Completer<GoogleMapController> _controller = Completer();
+
+  @override
+  void initState() {
+    super.initState();
+    _recuperarLocalizacaoAtual();
+    _adicionarListenerLocalizacao();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,8 +51,52 @@ class _PainelPassageiroState extends State<PainelPassageiro>
           ),
         ],
       ),
-      body: Container(),
+      body: Container(
+        child: GoogleMap(
+          mapType: MapType.normal,
+          initialCameraPosition: _cameraPosition,
+          onMapCreated: _onMapCreated,
+          myLocationButtonEnabled: true,
+          myLocationEnabled: true,
+        ),
+      ),
     );
+  }
+
+  _recuperarLocalizacaoAtual() async {
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.best,
+    );
+
+    setState(() {
+      _cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 16,
+      );
+    });
+  }
+
+  _adicionarListenerLocalizacao() {
+    Geolocator.getPositionStream(
+      distanceFilter: 5, // atualiza a localização a cada 5 metros
+      desiredAccuracy: LocationAccuracy.best,
+    ).listen((Position position) {
+      setState(() {
+        _cameraPosition = CameraPosition(
+          target: LatLng(position.latitude, position.longitude),
+          zoom: 16,
+        );
+      });
+    });
+  }
+
+  CameraPosition _cameraPosition = CameraPosition(
+    target: LatLng(-11.095173932052713, -37.13397389842669),
+    zoom: 15,
+  );
+
+  _onMapCreated(GoogleMapController googleMapController) {
+    _controller.complete(googleMapController);
   }
 
   void onSelected(BuildContext context, int item) {

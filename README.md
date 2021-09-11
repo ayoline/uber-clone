@@ -7,3 +7,5 @@
 - firebase_core: ^1.6.0
 - cloud_firestore: ^2.5.1
 - firebase_auth: ^3.1.0
+- google_maps_flutter: ^2.0.8
+- geolocator: ^7.6.0
