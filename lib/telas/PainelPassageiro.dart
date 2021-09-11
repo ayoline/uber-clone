@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -17,10 +16,15 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     with SingleTickerProviderStateMixin {
   Completer<GoogleMapController> _controller = Completer();
 
+  CameraPosition _cameraPosition = CameraPosition(
+    target: LatLng(-11.095173932052713, -37.13397389842669),
+    zoom: 15,
+  );
+
   @override
   void initState() {
     super.initState();
-    _recuperarLocalizacaoAtual();
+    _recuperarUltimaPosicaoConhecida();
     _adicionarListenerLocalizacao();
   }
 
@@ -63,17 +67,24 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
   }
 
-  _recuperarLocalizacaoAtual() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
-    );
+  _movimentarCamera(CameraPosition cameraPosition) async {
+    GoogleMapController googleMapController = await _controller.future;
 
-    setState(() {
+    googleMapController.animateCamera(
+      CameraUpdate.newCameraPosition(cameraPosition),
+    );
+  }
+
+  _recuperarUltimaPosicaoConhecida() async {
+    Position? position = await Geolocator.getLastKnownPosition();
+
+    if (position != null) {
       _cameraPosition = CameraPosition(
         target: LatLng(position.latitude, position.longitude),
-        zoom: 16,
+        zoom: 15,
       );
-    });
+      _movimentarCamera(_cameraPosition);
+    }
   }
 
   _adicionarListenerLocalizacao() {
@@ -86,14 +97,10 @@ class _PainelPassageiroState extends State<PainelPassageiro>
           target: LatLng(position.latitude, position.longitude),
           zoom: 16,
         );
+        _movimentarCamera(_cameraPosition);
       });
     });
   }
-
-  CameraPosition _cameraPosition = CameraPosition(
-    target: LatLng(-11.095173932052713, -37.13397389842669),
-    zoom: 15,
-  );
 
   _onMapCreated(GoogleMapController googleMapController) {
     _controller.complete(googleMapController);
