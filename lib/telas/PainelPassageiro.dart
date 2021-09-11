@@ -56,12 +56,107 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         ],
       ),
       body: Container(
-        child: GoogleMap(
-          mapType: MapType.normal,
-          initialCameraPosition: _cameraPosition,
-          onMapCreated: _onMapCreated,
-          myLocationButtonEnabled: true,
-          myLocationEnabled: true,
+        child: Stack(
+          children: [
+            GoogleMap(
+              mapType: MapType.normal,
+              initialCameraPosition: _cameraPosition,
+              onMapCreated: _onMapCreated,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              myLocationEnabled: true,
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: Container(
+                  height: 50,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey,
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.white,
+                  ),
+                  child: TextField(
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      icon: Container(
+                        margin: EdgeInsets.only(left: 20, bottom: 10),
+                        width: 10,
+                        height: 10,
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.green,
+                        ),
+                      ),
+                      hintText: "Meu local",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.only(left: 10, top: 10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 55,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: Container(
+                  height: 50,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.white,
+                  ),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      icon: Container(
+                        margin: EdgeInsets.only(left: 20, bottom: 10),
+                        width: 10,
+                        height: 10,
+                        child: Icon(Icons.local_taxi, color: Colors.black),
+                      ),
+                      hintText: "Digite o destino",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.only(left: 10, top: 10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              left: 0,
+              bottom: 0,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(10, 10, 10, 20),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    primary: Color(0xff1ebbd8),
+                  ),
+                  onPressed: () {},
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                    child: Text(
+                      "Chamar Uber",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
