@@ -21,6 +21,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     zoom: 15,
   );
 
+  Set<Marker> _marcadores = {};
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +66,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
               onMapCreated: _onMapCreated,
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
-              myLocationEnabled: true,
+              myLocationEnabled: false,
+              markers: _marcadores,
             ),
             Positioned(
               top: 0,
@@ -162,6 +165,26 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
   }
 
+  _exibirMarcadorPassageiro(Position local) async {
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      "images/passageiro.png",
+    ).then((BitmapDescriptor icone) {
+      Marker marcadorPassageiro = Marker(
+        markerId: MarkerId("marcador-passageiro"),
+        position: LatLng(local.latitude, local.longitude),
+        infoWindow: InfoWindow(title: "Meu local"),
+        icon: icone,
+      );
+
+      setState(() {
+        _marcadores.add(marcadorPassageiro);
+      });
+    });
+  }
+
   _movimentarCamera(CameraPosition cameraPosition) async {
     GoogleMapController googleMapController = await _controller.future;
 
@@ -174,6 +197,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     Position? position = await Geolocator.getLastKnownPosition();
 
     if (position != null) {
+      _exibirMarcadorPassageiro(position);
+
       _cameraPosition = CameraPosition(
         target: LatLng(position.latitude, position.longitude),
         zoom: 15,
@@ -188,6 +213,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       desiredAccuracy: LocationAccuracy.best,
     ).listen((Position position) {
       setState(() {
+        _exibirMarcadorPassageiro(position);
         _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
           zoom: 16,
