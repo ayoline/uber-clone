@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geocode/geocode.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uber_clone/Rotas.dart';
+import 'package:uber_clone/model/Destino.dart';
 
 class PainelPassageiro extends StatefulWidget {
   const PainelPassageiro({Key? key}) : super(key: key);
@@ -14,6 +17,9 @@ class PainelPassageiro extends StatefulWidget {
 
 class _PainelPassageiroState extends State<PainelPassageiro>
     with SingleTickerProviderStateMixin {
+  TextEditingController _controllerDestino = TextEditingController(
+    text: "joão deboni, 106",
+  );
   Completer<GoogleMapController> _controller = Completer();
 
   CameraPosition _cameraPosition = CameraPosition(
@@ -120,6 +126,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
                     color: Colors.white,
                   ),
                   child: TextField(
+                    controller: _controllerDestino,
                     decoration: InputDecoration(
                       icon: Container(
                         margin: EdgeInsets.only(left: 20, bottom: 10),
@@ -145,7 +152,9 @@ class _PainelPassageiroState extends State<PainelPassageiro>
                   style: ElevatedButton.styleFrom(
                     primary: Color(0xff1ebbd8),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    _chamarUber();
+                  },
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
                     child: Text(
@@ -163,6 +172,77 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         ),
       ),
     );
+  }
+
+  _chamarUber() async {
+    String enderecoDestino = _controllerDestino.text;
+
+    if (enderecoDestino.isNotEmpty) {
+      List<Location> locations = await locationFromAddress(enderecoDestino);
+      List<Placemark> listaEnderecos = await placemarkFromCoordinates(
+        locations.first.latitude,
+        locations.first.longitude,
+      );
+      //   locationFromAddress(enderecoDestino) as List<Placemark>;
+      //(await GeocodingPlatform.instance.locationFromAddress(enderecoDestino)).cast<Placemark>();
+      // (await locationFromAddress(enderecoDestino)).cast<Placemark>();
+
+      if (listaEnderecos.length > 0) {
+        Placemark endereco = listaEnderecos[0];
+        Destino destino = Destino();
+        destino.cidade = endereco.subAdministrativeArea;
+        destino.cep = endereco.postalCode;
+        destino.bairro = endereco.subLocality;
+        destino.rua = endereco.thoroughfare;
+        destino.numero = endereco.subThoroughfare;
+        destino.latitude = locations.first.latitude;
+        destino.longitude = locations.first.longitude;
+
+        String enderecoConfirmacao;
+        enderecoConfirmacao = "\n Cidade: " + destino.cidade;
+        enderecoConfirmacao += "\n Rua: " + destino.rua + ", " + destino.numero;
+        enderecoConfirmacao += "\n Bairro: " + destino.bairro;
+        enderecoConfirmacao += "\n CEP: " + destino.cep;
+
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text("Confirmação de endereço"),
+              content: Text(enderecoConfirmacao),
+              contentPadding: EdgeInsets.all(16),
+              actions: [
+                TextButton(
+                  style: TextButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 20),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 20),
+                  ),
+                  onPressed: () {
+                    //Salvar requisição
+                    //_salvarRequisicao();
+
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Confirmar',
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
   }
 
   _exibirMarcadorPassageiro(Position local) async {
