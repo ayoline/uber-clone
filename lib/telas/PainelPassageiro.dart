@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:geocode/geocode.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uber_clone/Rotas.dart';
 import 'package:uber_clone/model/Destino.dart';
+import 'package:uber_clone/model/Requisicao.dart';
+import 'package:uber_clone/model/Usuario.dart';
+import 'package:uber_clone/util/StatusRequisicao.dart';
+import 'package:uber_clone/util/UsuarioFirebase.dart';
 
 class PainelPassageiro extends StatefulWidget {
   const PainelPassageiro({Key? key}) : super(key: key);
@@ -174,6 +178,18 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
   }
 
+  _salvarRequisicao(Destino destino) async {
+    Requisicao requisicao = Requisicao();
+    Usuario passageiro = await UsuarioFirebase.getDadosUsuarioLogado();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    requisicao.destino = destino;
+    requisicao.passageiro = passageiro;
+    requisicao.status = StatusRequisicao.AGUARDANDO;
+
+    db.collection("requisicoes").add(requisicao.toMap());
+  }
+
   _chamarUber() async {
     String enderecoDestino = _controllerDestino.text;
 
@@ -183,9 +199,6 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         locations.first.latitude,
         locations.first.longitude,
       );
-      //   locationFromAddress(enderecoDestino) as List<Placemark>;
-      //(await GeocodingPlatform.instance.locationFromAddress(enderecoDestino)).cast<Placemark>();
-      // (await locationFromAddress(enderecoDestino)).cast<Placemark>();
 
       if (listaEnderecos.length > 0) {
         Placemark endereco = listaEnderecos[0];
@@ -228,8 +241,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
                   ),
                   onPressed: () {
                     //Salvar requisição
-                    //_salvarRequisicao();
-
+                    _salvarRequisicao(destino);
+                    //Fecha o AlertDialog
                     Navigator.pop(context);
                   },
                   child: const Text(
