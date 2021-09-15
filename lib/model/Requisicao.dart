@@ -1,5 +1,6 @@
 import 'package:uber_clone/model/Destino.dart';
 import 'package:uber_clone/model/Usuario.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Requisicao {
   String? _id;
@@ -10,7 +11,12 @@ class Requisicao {
 
   Destino? _destino;
 
-  Requisicao();
+  Requisicao() {
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    DocumentReference ref = db.collection("requisicoes").doc();
+    this.id = ref.id;
+  }
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> dadosPassageiro = {
@@ -30,6 +36,7 @@ class Requisicao {
     };
 
     Map<String, dynamic> dadosRequisicao = {
+      "id": this.id,
       "status": this.status,
       "passageiro": dadosPassageiro,
       "motorista": null,

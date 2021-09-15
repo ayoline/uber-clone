@@ -32,6 +32,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   );
 
   Set<Marker> _marcadores = {};
+  String? _idRequisicao;
 
   // Controles para exibicao na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -44,7 +45,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     _recuperarUltimaPosicaoConhecida();
     _adicionarListenerLocalizacao();
 
-    _statusUberNaoChamado();
+    // Adicionar listener para requisição ativa
+    _adicionarListenerRequisicaoAtiva();
   }
 
   @override
@@ -192,6 +194,37 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
   }
 
+  _adicionarListenerRequisicaoAtiva() async {
+    User? firebaseUser = await UsuarioFirebase.getUsuarioAtual();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    await db
+        .collection("requisicao_ativa")
+        .doc(firebaseUser!.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.data() != null) {
+        Map<String, dynamic>? dados = snapshot.data();
+        String status = dados!["status"];
+        _idRequisicao = dados["id_requisicao"];
+
+        switch (status) {
+          case StatusRequisicao.AGUARDANDO:
+            _statusAguardando();
+            break;
+          case StatusRequisicao.A_CAMINHO:
+            break;
+          case StatusRequisicao.VIAGEM:
+            break;
+          case StatusRequisicao.FINALIZADA:
+            break;
+        }
+      } else {
+        _statusUberNaoChamado();
+      }
+    });
+  }
+
   _alterarBotaoPrincipal(bool caixaDestino, String texto, Color cor) {
     setState(() {
       _exibirCaixaEnderecoDestino = caixaDestino;
@@ -216,7 +249,16 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
   }
 
-  _cancelarUber() {}
+  _cancelarUber() async {
+    Usuario firebaseUser = await UsuarioFirebase.getDadosUsuarioLogado();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    db.collection("requisicoes").doc(_idRequisicao).update({
+      "status": StatusRequisicao.CANCELADA,
+    });
+
+    db.collection("requisicao_ativa").doc(firebaseUser.idUsuario).delete();
+  }
 
   _salvarRequisicao(Destino destino) async {
     Requisicao requisicao = Requisicao();
@@ -227,9 +269,19 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     requisicao.passageiro = passageiro;
     requisicao.status = StatusRequisicao.AGUARDANDO;
 
-    db.collection("requisicoes").add(requisicao.toMap());
+    // Salvar requisição
+    db.collection("requisicoes").doc(requisicao.id).set(requisicao.toMap());
 
-    _statusAguardando();
+    // salvar requisição ativa
+    Map<String, dynamic> dadosRequisicaoAtiva = {};
+    dadosRequisicaoAtiva["id_requisicao"] = requisicao.id;
+    dadosRequisicaoAtiva["id_usuario"] = passageiro.idUsuario;
+    dadosRequisicaoAtiva["status"] = StatusRequisicao.AGUARDANDO;
+
+    db
+        .collection("requisicao_ativa")
+        .doc(passageiro.idUsuario)
+        .set(dadosRequisicaoAtiva);
   }
 
   _chamarUber() async {
