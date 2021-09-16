@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:uber_clone/util/StatusRequisicao.dart';
-
 import '../Rotas.dart';
 
 class PainelMotorista extends StatefulWidget {
@@ -98,7 +97,7 @@ class _PainelMotoristaState extends State<PainelMotorista>
                           querySnapshot.docs.toList();
                       DocumentSnapshot item = requisicoes[index];
 
-                      //String idRequisicao = item["id"];
+                      String idRequisicao = item["id"];
                       String nomePassageiro = item["passageiro"]["nome"];
                       String rua = item["destino"]["rua"];
                       String numero = item["destino"]["numero"];
@@ -106,6 +105,13 @@ class _PainelMotoristaState extends State<PainelMotorista>
                       return ListTile(
                         title: Text(nomePassageiro),
                         subtitle: Text("destino: $rua, $numero"),
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            "/corrida",
+                            arguments: idRequisicao,
+                          );
+                        },
                       );
                     },
                   );
