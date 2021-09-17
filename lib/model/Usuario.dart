@@ -5,6 +5,9 @@ class Usuario {
   String? _senha;
   String? _tipoUsuario;
 
+  double? _latitude;
+  double? _longitude;
+
   Usuario();
 
   Map<String, dynamic> toMap() {
@@ -12,6 +15,8 @@ class Usuario {
       "nome": this.nome,
       "email": this.email,
       "tipoUsuario": this.tipoUsuario,
+      "latitude": this.latitude,
+      "longitude": this.longitude,
     };
     return map;
   }
@@ -19,6 +24,14 @@ class Usuario {
   verificaTipoUsuario(bool tipoUsuario) {
     return tipoUsuario ? "motorista" : "passageiro";
   }
+
+  get latitude => this._latitude;
+
+  set latitude(value) => this._latitude = value;
+
+  get longitude => this._longitude;
+
+  set longitude(value) => this._longitude = value;
 
   get idUsuario => this._idUsuario;
 
