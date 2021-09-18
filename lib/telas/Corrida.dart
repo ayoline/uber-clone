@@ -137,6 +137,82 @@ class _CorridaState extends State<Corrida> {
       "A caminho do passageiro",
       Colors.grey,
     );
+    double latitudePassageiro = _dadosRequisicao!["passageiro"]["latitude"];
+    double longitudePassageiro = _dadosRequisicao!["passageiro"]["longitude"];
+
+    double latitudeMotorista = _dadosRequisicao!["motorista"]["latitude"];
+    double longitudeMotorista = _dadosRequisicao!["motorista"]["longitude"];
+
+    // Exibir dois marcadores
+    _exibirDoisMarcadores(
+      LatLng(latitudeMotorista, longitudeMotorista),
+      LatLng(latitudePassageiro, longitudePassageiro),
+    );
+    var nLat, nLon, sLat, sLon;
+
+    if (latitudeMotorista <= latitudePassageiro) {
+      sLat = latitudeMotorista;
+      nLat = latitudePassageiro;
+    } else {
+      sLat = latitudePassageiro;
+      nLat = latitudeMotorista;
+    }
+
+    if (longitudeMotorista <= longitudePassageiro) {
+      sLon = longitudeMotorista;
+      nLon = longitudePassageiro;
+    } else {
+      sLon = longitudePassageiro;
+      nLon = longitudeMotorista;
+    }
+
+    _movimentarCameraBounds(LatLngBounds(
+      northeast: LatLng(nLat, nLon),
+      southwest: LatLng(sLat, sLon),
+    ));
+  }
+
+  _movimentarCameraBounds(LatLngBounds latLngBounds) async {
+    GoogleMapController googleMapController = await _controller.future;
+
+    googleMapController.animateCamera(CameraUpdate.newLatLngBounds(
+      latLngBounds,
+      100,
+    ));
+  }
+
+  _exibirDoisMarcadores(LatLng latLngM, LatLng latLngP) {
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Set<Marker> _listaMarcadores = {};
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      "images/motorista.png",
+    ).then((BitmapDescriptor icone) {
+      Marker marcadorM = Marker(
+        markerId: MarkerId("marcador-motorista"),
+        position: LatLng(latLngM.latitude, latLngM.longitude),
+        infoWindow: InfoWindow(title: "Local motorista"),
+        icon: icone,
+      );
+      _listaMarcadores.add(marcadorM);
+    });
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      "images/passageiro.png",
+    ).then((BitmapDescriptor icone) {
+      Marker marcadorP = Marker(
+        markerId: MarkerId("marcador-passageiro"),
+        position: LatLng(latLngP.latitude, latLngP.longitude),
+        infoWindow: InfoWindow(title: "Local passageiro"),
+        icon: icone,
+      );
+      _listaMarcadores.add(marcadorP);
+    });
+
+    setState(() {
+      _marcadores = _listaMarcadores;
+    });
   }
 
   _alterarBotaoPrincipal(bool statusBotao, String texto, Color cor) {
@@ -147,7 +223,7 @@ class _CorridaState extends State<Corrida> {
     });
   }
 
-  _adicionarListenerRquisicao() async {
+  _adicionarListenerRequisicao() async {
     FirebaseFirestore db = FirebaseFirestore.instance;
     String idRequisicao = _dadosRequisicao!["id"];
     await db
@@ -183,7 +259,7 @@ class _CorridaState extends State<Corrida> {
         await db.collection("requisicoes").doc(idRequisicao).get();
 
     _dadosRequisicao = documentSnapshot.data() as Map<String, dynamic>?;
-    _adicionarListenerRquisicao();
+    _adicionarListenerRequisicao();
   }
 
   _adicionarListenerLocalizacao() {
@@ -197,7 +273,7 @@ class _CorridaState extends State<Corrida> {
           target: LatLng(position.latitude, position.longitude),
           zoom: 16,
         );
-        _movimentarCamera(_cameraPosition);
+        //_movimentarCamera(_cameraPosition);
 
         setState(() {
           _localMotorista = position;
@@ -240,7 +316,7 @@ class _CorridaState extends State<Corrida> {
         target: LatLng(position.latitude, position.longitude),
         zoom: 15,
       );
-      _movimentarCamera(_cameraPosition);
+      //_movimentarCamera(_cameraPosition);
       _localMotorista = position;
     }
   }

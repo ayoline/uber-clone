@@ -33,6 +33,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
 
   Set<Marker> _marcadores = {};
   String? _idRequisicao;
+  Position? _localPassageiro;
 
   // Controles para exibicao na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -273,6 +274,8 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     Requisicao requisicao = Requisicao();
     Usuario passageiro = await UsuarioFirebase.getDadosUsuarioLogado();
     FirebaseFirestore db = FirebaseFirestore.instance;
+    passageiro.latitude = _localPassageiro!.latitude;
+    passageiro.longitude = _localPassageiro!.longitude;
 
     requisicao.destino = destino;
     requisicao.passageiro = passageiro;
@@ -399,6 +402,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         target: LatLng(position.latitude, position.longitude),
         zoom: 15,
       );
+      _localPassageiro = position;
       _movimentarCamera(_cameraPosition);
     }
   }
@@ -414,6 +418,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
           target: LatLng(position.latitude, position.longitude),
           zoom: 16,
         );
+        _localPassageiro = position;
         _movimentarCamera(_cameraPosition);
       });
     });
