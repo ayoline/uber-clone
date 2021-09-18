@@ -213,6 +213,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
             _statusAguardando();
             break;
           case StatusRequisicao.A_CAMINHO:
+            _statusACaminho();
             break;
           case StatusRequisicao.VIAGEM:
             break;
@@ -246,6 +247,14 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       false,
       "Cancelar",
       Colors.red,
+    );
+  }
+
+  _statusACaminho() {
+    _alterarBotaoPrincipal(
+      false,
+      "Motorista a caminho",
+      Colors.grey,
     );
   }
 

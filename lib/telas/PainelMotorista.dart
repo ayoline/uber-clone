@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:uber_clone/util/StatusRequisicao.dart';
+import 'package:uber_clone/util/UsuarioFirebase.dart';
 import '../Rotas.dart';
 
 class PainelMotorista extends StatefulWidget {
@@ -16,12 +17,17 @@ class _PainelMotoristaState extends State<PainelMotorista>
     with SingleTickerProviderStateMixin {
   final _controller = StreamController<QuerySnapshot>();
   FirebaseFirestore db = FirebaseFirestore.instance;
+  Map<String, dynamic>? _dadosRequisicao;
 
   @override
   void initState() {
     super.initState();
     // Adiciona listenet para recuperar requisições
-    _adicionarListenerRequisicoes();
+    //_adicionarListenerRequisicoes();
+
+    // Recuperar requisição ativa para verificar se o motorista está
+    // atendendo alguma requisição e envia ele para tela de corrida
+    _recuperaRequisicaoAtivaMotorista();
   }
 
   @override
@@ -121,6 +127,29 @@ class _PainelMotoristaState extends State<PainelMotorista>
         },
       ),
     );
+  }
+
+  _recuperaRequisicaoAtivaMotorista() async {
+    // Recupera dados do usuario logado
+    User? firebaseUser = await UsuarioFirebase.getUsuarioAtual();
+    // Recupera requisição ativa
+    DocumentSnapshot documentSnapshot = await db
+        .collection("requisicao_ativa_motorista")
+        .doc(firebaseUser!.uid)
+        .get();
+
+    _dadosRequisicao = documentSnapshot.data() as Map<String, dynamic>?;
+
+    if (_dadosRequisicao == null) {
+      _adicionarListenerRequisicoes();
+    } else {
+      String idRequisicao = _dadosRequisicao!["id_requisicao"];
+      Navigator.pushReplacementNamed(
+        context,
+        "/corrida",
+        arguments: idRequisicao,
+      );
+    }
   }
 
   Stream<QuerySnapshot>? _adicionarListenerRequisicoes() {
