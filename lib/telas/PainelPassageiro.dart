@@ -35,6 +35,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   String? _idRequisicao;
   Position? _localPassageiro;
   Map<String, dynamic>? _dadosRequisicao;
+  StreamSubscription<DocumentSnapshot>? _streamSubscriptionRequisicoes;
 
   // Controles para exibicao na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -216,7 +217,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   _adicionarListenerRequisicao(String idRequisicao) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
 
-    await db
+    _streamSubscriptionRequisicoes = await db
         .collection("requisicoes")
         .doc(idRequisicao)
         .snapshots()
@@ -257,22 +258,25 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       "Chamar Uber",
       Color(0xff1ebbd8),
     );
-    Position position = Position(
-      longitude: _localPassageiro!.longitude,
-      latitude: _localPassageiro!.latitude,
-      timestamp: null,
-      accuracy: 0.0,
-      altitude: 0.0,
-      heading: 0.0,
-      speed: 0.0,
-      speedAccuracy: 0.0,
-    );
-    _exibirMarcadorPassageiro(position);
-    CameraPosition cameraPosition = CameraPosition(
-      target: LatLng(position.latitude, position.longitude),
-      zoom: 16,
-    );
-    _movimentarCamera(cameraPosition);
+
+    if (_localPassageiro != null) {
+      Position position = Position(
+        longitude: _localPassageiro!.longitude,
+        latitude: _localPassageiro!.latitude,
+        timestamp: null,
+        accuracy: 0.0,
+        altitude: 0.0,
+        heading: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+      _exibirMarcadorPassageiro(position);
+      CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 16,
+      );
+      _movimentarCamera(cameraPosition);
+    }
   }
 
   _statusAguardando() {
@@ -308,6 +312,85 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       "Motorista a caminho",
       Colors.grey,
     );
+
+    double latitudePassageiro = _dadosRequisicao!["passageiro"]["latitude"];
+    double longitudePassageiro = _dadosRequisicao!["passageiro"]["longitude"];
+
+    double latitudeMotorista = _dadosRequisicao!["motorista"]["latitude"];
+    double longitudeMotorista = _dadosRequisicao!["motorista"]["longitude"];
+
+    // Exibir dois marcadores
+    _exibirDoisMarcadores(
+      LatLng(latitudeMotorista, longitudeMotorista),
+      LatLng(latitudePassageiro, longitudePassageiro),
+    );
+    var nLat, nLon, sLat, sLon;
+
+    if (latitudeMotorista <= latitudePassageiro) {
+      sLat = latitudeMotorista;
+      nLat = latitudePassageiro;
+    } else {
+      sLat = latitudePassageiro;
+      nLat = latitudeMotorista;
+    }
+
+    if (longitudeMotorista <= longitudePassageiro) {
+      sLon = longitudeMotorista;
+      nLon = longitudePassageiro;
+    } else {
+      sLon = longitudePassageiro;
+      nLon = longitudeMotorista;
+    }
+
+    _movimentarCameraBounds(
+      LatLngBounds(
+        northeast: LatLng(nLat, nLon),
+        southwest: LatLng(sLat, sLon),
+      ),
+    );
+  }
+
+  _movimentarCameraBounds(LatLngBounds latLngBounds) async {
+    GoogleMapController googleMapController = await _controller.future;
+
+    googleMapController.animateCamera(CameraUpdate.newLatLngBounds(
+      latLngBounds,
+      100,
+    ));
+  }
+
+  _exibirDoisMarcadores(LatLng latLngM, LatLng latLngP) {
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Set<Marker> _listaMarcadores = {};
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      "images/motorista.png",
+    ).then((BitmapDescriptor icone) {
+      Marker marcadorM = Marker(
+        markerId: MarkerId("marcador-motorista"),
+        position: LatLng(latLngM.latitude, latLngM.longitude),
+        infoWindow: InfoWindow(title: "Local motorista"),
+        icon: icone,
+      );
+      _listaMarcadores.add(marcadorM);
+    });
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      "images/passageiro.png",
+    ).then((BitmapDescriptor icone) {
+      Marker marcadorP = Marker(
+        markerId: MarkerId("marcador-passageiro"),
+        position: LatLng(latLngP.latitude, latLngP.longitude),
+        infoWindow: InfoWindow(title: "Local passageiro"),
+        icon: icone,
+      );
+      _listaMarcadores.add(marcadorP);
+    });
+
+    setState(() {
+      _marcadores = _listaMarcadores;
+    });
   }
 
   _cancelarUber() async {
@@ -346,8 +429,10 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         .doc(passageiro.idUsuario)
         .set(dadosRequisicaoAtiva);
 
-    // Chama método para alterar interface para o status aguardando
-    _statusAguardando();
+    // Adicionar listener requisição
+    if (_streamSubscriptionRequisicoes == null) {
+      _adicionarListenerRequisicao(requisicao.id);
+    }
   }
 
   _chamarUber() async {
@@ -475,10 +560,11 @@ class _PainelPassageiroState extends State<PainelPassageiro>
           position.latitude,
           position.longitude,
         );
-      } else if (position != null) {
+      } else {
         setState(() {
           _localPassageiro = position;
         });
+        _statusUberNaoChamado();
       }
     });
   }
@@ -504,5 +590,12 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       Rotas.ROTA_HOME,
       (_) => false,
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    _streamSubscriptionRequisicoes!.cancel();
   }
 }
