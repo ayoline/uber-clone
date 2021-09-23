@@ -27,27 +27,32 @@ class _CorridaState extends State<Corrida> {
   bool _statusBotao = true;
   Set<Marker> _marcadores = {};
   Map<String, dynamic>? _dadosRequisicao;
-  Position? _localMotorista;
 
   // Controles para exibicao na tela
   String _textoBotao = "Aceitar corrida";
   Color _corBotao = Color(0xff1ebbd8);
+  String _mensagemStatus = "";
+  String? _idRequisicao;
+  Position? _localMotorista;
+  String _statusRequisicao = StatusRequisicao.AGUARDANDO;
 
   @override
   void initState() {
     super.initState();
-    _recuperarUltimaPosicaoConhecida();
-    _adicionarListenerLocalizacao();
+    _idRequisicao = widget.idRequisicao;
 
-    // Recuperar requisição e adicionar listener para mudança de status
-    _recuperarRequisicao();
+    // adicionar listener para mudança na requisição
+    _adicionarListenerRequisicao();
+
+    //_recuperarUltimaPosicaoConhecida();
+    _adicionarListenerLocalizacao();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Painel Corrida"),
+        title: Text("Painel Corrida - " + _mensagemStatus),
       ),
       body: Container(
         child: Stack(
@@ -71,7 +76,11 @@ class _CorridaState extends State<Corrida> {
                   style: ElevatedButton.styleFrom(
                     primary: _corBotao,
                   ),
-                  onPressed: _statusBotao ? _aceitarCorrida : null,
+                  onPressed: _statusBotao
+                      ? _aceitarCorrida
+                      : () {
+                          _iniciarCorrida();
+                        },
                   //_exibirCaixaEnderecoDestino ? _chamarUber : _cancelarUber,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
@@ -95,8 +104,8 @@ class _CorridaState extends State<Corrida> {
   _aceitarCorrida() async {
     // Recuperar dados motorista
     Usuario motorista = await UsuarioFirebase.getDadosUsuarioLogado();
-    motorista.latitude = _localMotorista!.latitude;
-    motorista.longitude = _localMotorista!.longitude;
+    motorista.latitude = _dadosRequisicao!["motorista"]["latitude"];
+    motorista.longitude = _dadosRequisicao!["motorista"]["longitude"];
 
     FirebaseFirestore db = FirebaseFirestore.instance;
     String idRequisicao = _dadosRequisicao!["id"];
@@ -129,13 +138,37 @@ class _CorridaState extends State<Corrida> {
       "Aceitar Corrida",
       Color(0xff1ebbd8),
     );
+    double motoristaLat = _localMotorista!.latitude;
+    double motoristaLon = _localMotorista!.longitude;
+
+    Position position = Position(
+      speedAccuracy: 0.0,
+      altitude: 0.0,
+      speed: 0.0,
+      accuracy: 0.0,
+      heading: 0.0,
+      timestamp: null,
+      longitude: motoristaLat,
+      latitude: motoristaLon,
+    );
+    _exibirMarcador(
+      position,
+      "images/motorista.png",
+      "Motorista",
+    );
+    CameraPosition cameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 16,
+    );
+    _movimentarCamera(cameraPosition);
   }
 
   _statusACaminho() {
+    _mensagemStatus = "A caminho do passageiro";
     _alterarBotaoPrincipal(
       false,
-      "A caminho do passageiro",
-      Colors.grey,
+      "Iniciar corrida",
+      Color(0xff1ebbd8),
     );
     double latitudePassageiro = _dadosRequisicao!["passageiro"]["latitude"];
     double longitudePassageiro = _dadosRequisicao!["passageiro"]["longitude"];
@@ -171,6 +204,8 @@ class _CorridaState extends State<Corrida> {
       southwest: LatLng(sLat, sLon),
     ));
   }
+
+  _iniciarCorrida() {}
 
   _movimentarCameraBounds(LatLngBounds latLngBounds) async {
     GoogleMapController googleMapController = await _controller.future;
@@ -225,17 +260,18 @@ class _CorridaState extends State<Corrida> {
 
   _adicionarListenerRequisicao() async {
     FirebaseFirestore db = FirebaseFirestore.instance;
-    String idRequisicao = _dadosRequisicao!["id"];
     await db
         .collection("requisicoes")
-        .doc(idRequisicao)
+        .doc(_idRequisicao)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.data() != null) {
-        Map<String, dynamic>? dados = snapshot.data();
-        String status = dados!["status"];
+        _dadosRequisicao = snapshot.data();
 
-        switch (status) {
+        Map<String, dynamic>? dados = snapshot.data();
+        _statusRequisicao = dados!["status"];
+
+        switch (_statusRequisicao) {
           case StatusRequisicao.AGUARDANDO:
             _statusAguardando();
             break;
@@ -257,9 +293,6 @@ class _CorridaState extends State<Corrida> {
 
     DocumentSnapshot documentSnapshot =
         await db.collection("requisicoes").doc(idRequisicao).get();
-
-    _dadosRequisicao = documentSnapshot.data() as Map<String, dynamic>?;
-    _adicionarListenerRequisicao();
   }
 
   _adicionarListenerLocalizacao() {
@@ -267,37 +300,42 @@ class _CorridaState extends State<Corrida> {
       distanceFilter: 5, // atualiza a localização a cada 5 metros
       desiredAccuracy: LocationAccuracy.best,
     ).listen((Position position) {
-      setState(() {
-        _exibirMarcadorPassageiro(position);
-        _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 16,
-        );
-        //_movimentarCamera(_cameraPosition);
-
-        setState(() {
-          _localMotorista = position;
-        });
-      });
+      // ignore: unrelated_type_equality_checks
+      if (position.latitude.toString().isNotEmpty) {
+        if (_idRequisicao != null && _idRequisicao!.isNotEmpty) {
+          if (_statusRequisicao != StatusRequisicao.AGUARDANDO) {
+            // Atualiza local do passageiro
+            UsuarioFirebase.atualizarDadosLocalizacao(
+              _idRequisicao!,
+              position.latitude,
+              position.longitude,
+            );
+          }
+        } else if (position.latitude.toString().isNotEmpty) {
+          setState(() {
+            _localMotorista = position;
+          });
+        }
+      }
     });
   }
 
-  _exibirMarcadorPassageiro(Position local) async {
+  _exibirMarcador(Position local, String icone, String infoWindow) async {
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     BitmapDescriptor.fromAssetImage(
       ImageConfiguration(devicePixelRatio: pixelRatio),
-      "images/motorista.png",
-    ).then((BitmapDescriptor icone) {
-      Marker marcadorPassageiro = Marker(
-        markerId: MarkerId("marcador-motorista"),
+      icone,
+    ).then((BitmapDescriptor bitmapDescriptor) {
+      Marker marcador = Marker(
+        markerId: MarkerId(icone),
         position: LatLng(local.latitude, local.longitude),
-        infoWindow: InfoWindow(title: "Meu local"),
-        icon: icone,
+        infoWindow: InfoWindow(title: infoWindow),
+        icon: bitmapDescriptor,
       );
 
       setState(() {
-        _marcadores.add(marcadorPassageiro);
+        _marcadores.add(marcador);
       });
     });
   }
@@ -310,14 +348,8 @@ class _CorridaState extends State<Corrida> {
     Position? position = await Geolocator.getLastKnownPosition();
 
     if (position != null) {
-      _exibirMarcadorPassageiro(position);
+      // Atualizar localização em tempo real do motorista
 
-      _cameraPosition = CameraPosition(
-        target: LatLng(position.latitude, position.longitude),
-        zoom: 15,
-      );
-      //_movimentarCamera(_cameraPosition);
-      _localMotorista = position;
     }
   }
 
