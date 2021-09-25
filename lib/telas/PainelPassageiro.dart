@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:uber_clone/Rotas.dart';
 import 'package:uber_clone/model/Destino.dart';
 import 'package:uber_clone/model/Marcador.dart';
@@ -237,8 +238,13 @@ class _PainelPassageiroState extends State<PainelPassageiro>
             _statusACaminho();
             break;
           case StatusRequisicao.VIAGEM:
+            _statusEmViagem();
             break;
           case StatusRequisicao.FINALIZADA:
+            _statusFinalizada();
+            break;
+          case StatusRequisicao.CONFIRMADA:
+            _statusConfirmada();
             break;
         }
       }
@@ -360,6 +366,95 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     );
 
     _exibirCentralizarDoisMarcadores(marcadorOrigem, marcadorDestino);
+  }
+
+  _statusFinalizada() async {
+    // Calcula valor da corrida
+    double latitudeDestino = _dadosRequisicao!["destino"]["latitude"];
+    double longitudeDestino = _dadosRequisicao!["destino"]["longitude"];
+
+    double latitudeOrigem = _dadosRequisicao!["origem"]["latitude"];
+    double longitudeOrigem = _dadosRequisicao!["origem"]["longitude"];
+
+    double distanciaEmMetros = await Geolocator.distanceBetween(
+      latitudeOrigem,
+      longitudeOrigem,
+      latitudeDestino,
+      longitudeDestino,
+    );
+
+    // Converter para KM
+    double distanciaKm = distanciaEmMetros / 1000;
+
+    // 8 é o valor cobrado por Km
+    double valorViagem = distanciaKm * 8;
+
+    // Formatar valor viagem
+    var f = new NumberFormat("#,##0.00", "pt_BR");
+    var valorViagemFormatado = f.format(valorViagem);
+
+    _alterarBotaoPrincipal(
+      false,
+      "Total - R\$ $valorViagemFormatado",
+      Colors.green,
+    );
+
+    _marcadores = {};
+    Position position = Position(
+      speedAccuracy: 0.0,
+      altitude: 0.0,
+      speed: 0.0,
+      accuracy: 0.0,
+      heading: 0.0,
+      timestamp: null,
+      longitude: latitudeDestino,
+      latitude: longitudeDestino,
+    );
+    _exibirMarcador(
+      position,
+      "images/destino.png",
+      "Destino",
+    );
+    CameraPosition cameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 16,
+    );
+    _movimentarCamera(cameraPosition);
+  }
+
+  _statusConfirmada() {
+    if (_streamSubscriptionRequisicoes != null) {
+      _streamSubscriptionRequisicoes!.cancel();
+
+      _exibirCaixaEnderecoDestino = true;
+
+      _alterarBotaoPrincipal(
+        true,
+        "Chamar Uber",
+        Color(0xff1ebbd8),
+      );
+    }
+    _dadosRequisicao = {};
+  }
+
+  _exibirMarcador(Position local, String icone, String infoWindow) async {
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(devicePixelRatio: pixelRatio),
+      icone,
+    ).then((BitmapDescriptor bitmapDescriptor) {
+      Marker marcador = Marker(
+        markerId: MarkerId(icone),
+        position: LatLng(local.latitude, local.longitude),
+        infoWindow: InfoWindow(title: infoWindow),
+        icon: bitmapDescriptor,
+      );
+
+      setState(() {
+        _marcadores.add(marcador);
+      });
+    });
   }
 
   _exibirCentralizarDoisMarcadores(
