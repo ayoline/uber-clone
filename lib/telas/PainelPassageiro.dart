@@ -24,7 +24,7 @@ class PainelPassageiro extends StatefulWidget {
 class _PainelPassageiroState extends State<PainelPassageiro>
     with SingleTickerProviderStateMixin {
   TextEditingController _controllerDestino = TextEditingController(
-    text: "joão deboni, 106",
+    text: "Av. Santos Dumont, 650 - Atalaia, Aracaju - SE, 49037-475",
   );
   Completer<GoogleMapController> _controller = Completer();
 
@@ -47,6 +47,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   @override
   void initState() {
     super.initState();
+
     // Adicionar listener para requisição ativa
     _recuperaRequisicaoAtiva();
 
@@ -178,8 +179,15 @@ class _PainelPassageiroState extends State<PainelPassageiro>
                   style: ElevatedButton.styleFrom(
                     primary: _corBotao,
                   ),
-                  onPressed:
-                      _exibirCaixaEnderecoDestino ? _chamarUber : _cancelarUber,
+                  onPressed: () {
+                    if (_textoBotao == "Chamar Uber") {
+                      _chamarUber();
+                    } else if (_textoBotao == "Cancelar") {
+                      _cancelarUber();
+                    } else {
+                      () {};
+                    }
+                  },
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
                     child: Text(
@@ -228,7 +236,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
         Map<String, dynamic>? dados = snapshot.data();
         _dadosRequisicao = dados;
         String status = dados!["status"];
-        _idRequisicao = dados["id_requisicao"];
+        _idRequisicao = dados["id"];
 
         switch (status) {
           case StatusRequisicao.AGUARDANDO:
@@ -251,17 +259,17 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     });
   }
 
-  _alterarBotaoPrincipal(bool caixaDestino, String texto, Color cor) {
+  _alterarBotaoPrincipal(String texto, Color cor) {
     setState(() {
-      _exibirCaixaEnderecoDestino = caixaDestino;
       _textoBotao = texto;
       _corBotao = cor;
     });
   }
 
   _statusUberNaoChamado() {
+    _exibirCaixaEnderecoDestino = true;
+
     _alterarBotaoPrincipal(
-      true,
       "Chamar Uber",
       Color(0xff1ebbd8),
     );
@@ -287,8 +295,9 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   }
 
   _statusAguardando() {
+    _exibirCaixaEnderecoDestino = false;
+
     _alterarBotaoPrincipal(
-      false,
       "Cancelar",
       Colors.red,
     );
@@ -314,8 +323,9 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   }
 
   _statusACaminho() {
+    _exibirCaixaEnderecoDestino = false;
+
     _alterarBotaoPrincipal(
-      false,
       "Motorista a caminho",
       Colors.grey,
     );
@@ -342,8 +352,9 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   }
 
   _statusEmViagem() {
+    _exibirCaixaEnderecoDestino = false;
+
     _alterarBotaoPrincipal(
-      false,
       "Em viagem",
       Colors.grey,
     );
@@ -394,7 +405,6 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     var valorViagemFormatado = f.format(valorViagem);
 
     _alterarBotaoPrincipal(
-      false,
       "Total - R\$ $valorViagemFormatado",
       Colors.green,
     );
@@ -425,15 +435,36 @@ class _PainelPassageiroState extends State<PainelPassageiro>
   _statusConfirmada() {
     if (_streamSubscriptionRequisicoes != null) {
       _streamSubscriptionRequisicoes!.cancel();
-
-      _exibirCaixaEnderecoDestino = true;
-
-      _alterarBotaoPrincipal(
-        true,
-        "Chamar Uber",
-        Color(0xff1ebbd8),
-      );
+      _streamSubscriptionRequisicoes = null;
     }
+
+    _exibirCaixaEnderecoDestino = true;
+    _alterarBotaoPrincipal(
+      "Chamar Uber",
+      Color(0xff1ebbd8),
+    );
+
+    // Exibe local do passageiro
+    double passageiroLat = _dadosRequisicao!["passageiro"]["latitude"];
+    double passageiroLon = _dadosRequisicao!["passageiro"]["longitude"];
+
+    Position position = Position(
+      longitude: passageiroLon,
+      latitude: passageiroLat,
+      timestamp: null,
+      accuracy: 0.0,
+      altitude: 0.0,
+      heading: 0.0,
+      speed: 0.0,
+      speedAccuracy: 0.0,
+    );
+    _exibirMarcadorPassageiro(position);
+    CameraPosition cameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 16,
+    );
+    _movimentarCamera(cameraPosition);
+
     _dadosRequisicao = {};
   }
 
@@ -552,6 +583,13 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     });
 
     db.collection("requisicao_ativa").doc(firebaseUser.idUsuario).delete();
+
+    _statusUberNaoChamado();
+
+    if (_streamSubscriptionRequisicoes != null) {
+      _streamSubscriptionRequisicoes!.cancel();
+      _streamSubscriptionRequisicoes = null;
+    }
   }
 
   _salvarRequisicao(Destino destino) async {
@@ -680,7 +718,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       CameraUpdate.newCameraPosition(cameraPosition),
     );
   }
-
+  /*
   _recuperarUltimaPosicaoConhecida() async {
     Position? position = await Geolocator.getLastKnownPosition();
 
@@ -697,6 +735,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
       }
     });
   }
+  */
 
   _adicionarListenerLocalizacao() {
     Geolocator.getPositionStream(
@@ -709,6 +748,7 @@ class _PainelPassageiroState extends State<PainelPassageiro>
           _idRequisicao!,
           position.latitude,
           position.longitude,
+          "passageiro",
         );
       } else {
         setState(() {
@@ -747,5 +787,6 @@ class _PainelPassageiroState extends State<PainelPassageiro>
     super.dispose();
 
     _streamSubscriptionRequisicoes!.cancel();
+    _streamSubscriptionRequisicoes = null;
   }
 }

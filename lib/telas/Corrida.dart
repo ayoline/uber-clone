@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -25,12 +24,11 @@ class _CorridaState extends State<Corrida> {
     zoom: 15,
   );
 
-  bool _statusBotao = true;
   Set<Marker> _marcadores = {};
   Map<String, dynamic>? _dadosRequisicao;
 
   // Controles para exibicao na tela
-  String _textoBotao = "Aceitar corrida";
+  String _textoBotao = "Aceitar Corrida";
   Color _corBotao = Color(0xff1ebbd8);
   String _mensagemStatus = "";
   String? _idRequisicao;
@@ -77,11 +75,19 @@ class _CorridaState extends State<Corrida> {
                   style: ElevatedButton.styleFrom(
                     primary: _corBotao,
                   ),
-                  onPressed: _statusBotao
-                      ? _aceitarCorrida
-                      : () {
-                          _iniciarCorrida();
-                        },
+                  onPressed: () {
+                    if (_textoBotao == "Aceitar Corrida") {
+                      _aceitarCorrida();
+                    } else if (_textoBotao == "Iniciar corrida") {
+                      _iniciarCorrida();
+                    } else if (_textoBotao.contains("Confirmar")) {
+                      _confirmarCorrida();
+                    } else if (_textoBotao == "Finalizar corrida") {
+                      _finalizarCorrida();
+                    } else {
+                      () {};
+                    }
+                  },
                   //_exibirCaixaEnderecoDestino ? _chamarUber : _cancelarUber,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(32, 16, 32, 16),
@@ -131,11 +137,8 @@ class _CorridaState extends State<Corrida> {
     });
   }
 
-  _cancelarCorrida() {}
-
   _statusAguardando() {
     _alterarBotaoPrincipal(
-      true,
       "Aceitar Corrida",
       Color(0xff1ebbd8),
     );
@@ -170,7 +173,6 @@ class _CorridaState extends State<Corrida> {
   _statusACaminho() {
     _mensagemStatus = "A caminho do passageiro";
     _alterarBotaoPrincipal(
-      false,
       "Iniciar corrida",
       Color(0xff1ebbd8),
     );
@@ -256,7 +258,6 @@ class _CorridaState extends State<Corrida> {
 
     _mensagemStatus = "Viagem finalizada";
     _alterarBotaoPrincipal(
-      false,
       "Confirmar - R\$ $valorViagemFormatado",
       Color(0xff1ebbd8),
     );
@@ -307,7 +308,6 @@ class _CorridaState extends State<Corrida> {
   _statusEmViagem() {
     _mensagemStatus = "Em viagem";
     _alterarBotaoPrincipal(
-      false,
       "Finalizar corrida",
       Color(0xff1ebbd8),
     );
@@ -412,9 +412,8 @@ class _CorridaState extends State<Corrida> {
     });
   }
 
-  _alterarBotaoPrincipal(bool statusBotao, String texto, Color cor) {
+  _alterarBotaoPrincipal(String texto, Color cor) {
     setState(() {
-      statusBotao = true;
       _textoBotao = texto;
       _corBotao = cor;
     });
@@ -476,6 +475,7 @@ class _CorridaState extends State<Corrida> {
               _idRequisicao!,
               position.latitude,
               position.longitude,
+              "motorista",
             );
           } else {
             // Requisição aguardando
@@ -512,7 +512,7 @@ class _CorridaState extends State<Corrida> {
   _onMapCreated(GoogleMapController googleMapController) {
     _controller.complete(googleMapController);
   }
-
+  /*
   _recuperarUltimaPosicaoConhecida() async {
     Position? position = await Geolocator.getLastKnownPosition();
 
@@ -521,6 +521,7 @@ class _CorridaState extends State<Corrida> {
 
     }
   }
+  */
 
   _movimentarCamera(CameraPosition cameraPosition) async {
     GoogleMapController googleMapController = await _controller.future;
